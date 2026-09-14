@@ -1,0 +1,28 @@
+<launch>
+    <!-- 加载参数文件 -->
+    <rosparam file="$(find usvc_controller)/config/config.yaml" command="load"/>
+
+    <!-- 启动传感器节点 -->
+    <node pkg="usvc_controller" type="sensor_node" name="sensor_node" output="screen" respawn="true" respawn_delay="1"   >
+    </node>
+
+    <!-- ACH节点 -->
+    <node pkg="usvc_controller" type="ach_node" name="ach_node" output="screen" respawn="true" respawn_delay="1"   >
+    </node>
+
+    <!-- 启动上位机节点 -->
+    <node pkg="usvc_controller" type="upper_node" name="upper_node" output="screen" respawn="true" respawn_delay="1"   >
+    </node>
+
+    <!-- 启动船节点 -->
+    <node pkg="usvc_controller" type="ship_node" name="ship_node" output="screen" respawn="true" respawn_delay="1"   >
+    </node>
+
+    <!-- 启动控制节点 -->
+    <node pkg="usvc_controller" type="control_node" name="control_node" output="screen" respawn="true" respawn_delay="1"   >
+    </node>
+
+     <!-- 启动外设节点 -->
+    <node pkg="usvc_controller" type="peripheral_node" name="peripheral_node" output="screen" respawn="true" respawn_delay="1"   >
+    </node>
+</launch>

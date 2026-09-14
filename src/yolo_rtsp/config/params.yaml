@@ -1,0 +1,45 @@
+# YOLO RTSP Streamer 配置文件
+
+# 相机配置
+camera:
+  rtsp_url: "rtsp://admin:robosea123@192.168.1.65:554/11"
+  width: 1920  # 与终端2 ffmpeg命令的 -video_size 保持一致
+  height: 1080
+  fps: 30      # 与终端2 ffmpeg命令的 -framerate 保持一致
+
+  # rtsp_url: "rtsp://admin:robosea123@192.168.1.65:554/11"  # 360网络相机，带用户名密码
+  # width: 320
+  # height: 240
+  # fps: 30
+  # ============================================================================
+
+# Python脚本配置（YOLO目标识别）
+python:
+  # ================= 当前环境：VM推流测试，识别关闭 =================
+  # 下面两行留空 = C++不启动Python = YOLO整段不运行（只测推流）
+  # 想恢复识别：填回正确路径即可（注意VM用户名是czf，不是公司的nvidia）
+  #model_path: ""   # 例："/home/czf/catkin_ws/src/yolo_rtsp/det/best.pt&yolo11n.pt
+  # ==================================================================
+  # ================= 公司工控机（换回时取消注释，删掉上面两个空值） =================
+  script_dir: "/home/nvidia/USVC/usvc_ws/src/yolo_rtsp/scripts"  
+  model_path: "/home/nvidia/USVC/usvc_ws/src/yolo_rtsp/det/yolo11n.pt"
+  # ================================================================================
+  conf_thresh: 0.5  # 置信度阈值
+  skip_frames: 1    # 跳帧数，CPU推理吃力时调大（VM无显卡，先3起步；公司Jetson可改回1）
+
+# RTSP服务器配置 rtsp:/192.168.1.80:8554/annotated/
+rtsp_server:
+  port: 8554
+  raw_path: "raw"  # 原始图像流路径
+  annotated_path: "annotated"  # 标注图像流路径
+  bitrate: 4000  # 推流码率 kbps 4000 1000
+  enable_raw: false
+  push_width: 640
+  push_height: 480
+  push_fps: 30
+# 输出配置
+output:
+  publish_ros_topics: true  # 是否发布ROS话题
+  udp_enabled: true  # 是否启用UDP发送（兼容Qt端）
+  udp_ip: "127.0.0.1"
+  udp_port: 8888

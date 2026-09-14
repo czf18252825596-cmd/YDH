@@ -1,0 +1,8 @@
+<launch>
+    <!-- 加载参数文件 -->
+    <rosparam file="$(find usvc_navi)config/config.yaml" command="load"/>
+
+    <!-- 启动导航节点 -->
+    <node pkg="usvc_navi" type="usvc_navi_node" name="usvc_navi_node" output="screen" respawn="true" respawn_delay="1"   >
+    </node>
+</launch>

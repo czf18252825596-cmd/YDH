@@ -1,0 +1,37 @@
+<launch>
+  <!-- 仿真版：启动 planner_node + fake_ship（虚拟船） + 假路径（用于算法闭环测试） -->
+  <!-- 闭环链路: planner_node → /usvc_planner/cmd → fake_ship → /usvc_navi/navi → planner_node -->
+
+  <!-- 加载参数 -->
+  <rosparam file="$(find usvc_planner)/config/config.yaml" command="load"/>
+
+  <!-- planner_node -->
+  <node pkg="usvc_planner" type="planner_node" name="planner_node"
+        output="screen" respawn="true" respawn_delay="3"/>
+
+  <!-- 虚拟船: 订阅 GuidanceCmd 运动学积分 → 发布动态 navi + TF(map→ship_base) -->
+  <node pkg="usvc_planner" type="fake_ship.py" name="fake_ship"
+        output="screen" respawn="true" respawn_delay="3">
+    <!-- 起始位姿（对齐 fake_path 起点附近, 初始航向朝东北 50°） -->
+    <param name="lat"       value="32.8194"/>
+    <param name="lon"       value="119.1138"/>
+    <param name="heading"   value="40.0"/>
+    <!-- 船响应时间常数（越大船响应越慢, 用来调 PD/PI） -->
+    <param name="tau_heading" value="0.3"/>
+    <param name="tau_speed"   value="0.5"/>
+    <param name="rate"        value="50"/>
+    <param name="pub_navi_hz" value="10"/>
+  </node>
+
+  <!-- 假路径注入器（一次性发 3 个航点的沿边路径）-->
+  <node pkg="rostopic" type="rostopic" name="fake_path"
+        args="pub -1 /usvc_planner/path usvc_planner/LosPath
+          '{header: {stamp: now, frame_id: map},
+            path: {poses: [
+              {pose: {position: {x: 119.1148, y: 32.8204, z: 0}}},
+              {pose: {position: {x: 119.1158, y: 32.8214, z: 0}}},
+              {pose: {position: {x: 119.1168, y: 32.8224, z: 0}}}
+            ]},
+            water_is_on_left: true}'"/>
+</launch>
+

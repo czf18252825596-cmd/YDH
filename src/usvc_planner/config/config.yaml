@@ -1,0 +1,35 @@
+# usvc_planner 参数配置（参数命名对齐 USVC config.yaml + YDH navigator 参数）
+# 加载方式: launch 中 <rosparam file="..." command="load"/> (不加 ns)
+# 代码读取: nh.param("/planner_node/xxx", ...) 绝对路径
+# 对齐 YDH otter_planner 习惯（yaml 顶层命名空间 = 节点名）
+
+planner_node:
+  # ---------- LOS 制导参数 ----------
+  target_speed: 1.2              # 目标速度 (m/s)
+  los_distance: 5.0              # LOS 预瞄距离 (m)
+  waypoint_tolerance: 2.5       # 航点到达容差 (m)
+  min_speed_turn: 0.4            # 急弯最低速度 (m/s)
+  adaptive_los_scale: 1.5        # ALOS 自适应系数（船离路径越远预瞄点拉得越长）
+
+  # ---------- APF 避障参数 ----------
+  apf_repulsive_gain: 0.6        # 斥力增益
+  apf_attractive_gain: 2.0       # 吸引力增益
+  apf_safe_distance: 2.0         # 安全距离 (m，内停)
+  apf_influence_distance: 20.0   # 影响距离 (m，外不计)
+  apf_sigma: 3.5                 # 高斯衰减 sigma
+  apf_min_speed: 0.2             # 避障最低速度 (m/s)
+  apf_max_speed: 1.0             # 避障最高速度 (m/s)
+
+  # ---------- 雷达参数 ----------
+  # lidar_topic: "/livox/lidar"   # 雷达话题名
+  lidar_topic: "/sensor/lidar_filter"
+  lidar_type: "pointcloud2"      # pointcloud2 或 laserscan
+  lidar_spatial_mask: true       # 沿边模式是否启用岸侧掩码
+
+
+  # ---------- 启动初始状态 ----------
+  start_run_mode: 0              # 0=沿边  1=自主导航
+  start_task_state: 1            # 0=停止  1=开始
+
+  # ---------- 调试 ----------
+  debug_print: true              # 是否打印调试日志

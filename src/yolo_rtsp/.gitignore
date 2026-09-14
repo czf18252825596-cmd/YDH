@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+det/*.engine
+det/*.onnx
+det/*.pt

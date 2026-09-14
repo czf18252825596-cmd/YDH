@@ -1,0 +1,53 @@
+DEVICE_ID: 1
+DEVICE_PORT: 5001
+DEVICE_SN: "3804402080"
+DEVICE_TYPE: "ship_calc"
+
+control:
+  sail:
+    SPEED: 1.8
+    Y: 300
+    TOLERANCERADIUS1: 2
+    TOLERANCERADIUS2: 2.5
+    LAT: 1
+    LON: 1
+
+  back:
+    MAXSPEED: 1.8
+    MINSPEED: 0.2
+    LOSDISTANCE: 5.0
+    OBSTACLE_INFLUENCE_DISTANCE: 20.0
+    SAFE_DISTANCE: 2.0
+    REPULSIVE_GAIN: 1.0
+    ATTRACTIVE_GAIN: 1.0
+    SIGMA: 5.0
+    TOLERANCERADIUS: 2.0
+    Y: 300
+    LAT: 1
+    LON: 1 
+
+  path:
+    MAXSPEED: 1.8
+    MINSPEED: 0.2
+    LOSDISTANCE: 5
+    OBSTACLE_INFLUENCE_DISTANCE: 20.0
+    SAFE_DISTANCE: 2.0
+    REPULSIVE_GAIN: 1.0
+    ATTRACTIVE_GAIN: 1.0
+    SIGMA: 5.0
+    TOLERANCERADIUS: 2.0
+  
+sensor:
+  lidar:
+    X_DISTANCE: 0.01
+    Y_DISTANCE: 0.01
+    Z_DISTANCE: 0.01
+    ClusterTolerance: 0.1
+    MinClusterSize: 200000
+    MaxClusterSize: 2
+    
+ship:
+  LISTEN_PORT: 2001
+
+upper:
+  BROAD_PORT: 2001

@@ -1,0 +1,6 @@
+string node_name              # 目标节点: sensor/control/ship
+string[] param_names          # 参数名数组
+string[] param_values         # 参数值数组
+---
+bool success
+string message

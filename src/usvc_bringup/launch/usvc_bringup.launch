@@ -1,0 +1,24 @@
+<launch>
+
+    <!--激光雷达-->
+    <include file="$(find livox_ros_driver2)/launch/rviz_MID360s.launch" />
+    
+    <!--FAST——LIO建图-->
+    <include file="$(find fast_lio)/launch/mapping_mid360s.launch" />
+
+    <!--导航-->
+    <include file="$(find usvc_navi)/launch/usvc_navi_bringup.launch" />
+
+    <!--工控机主节点-->
+    <include file="$(find usvc_controller)/launch/usvc_controller_bringup.launch" />
+    
+    <!--沿边+apf避障-->
+    <include file="$(find usvc_planner)/launch/usvc_planner.launch"/>
+    
+    <!--目标识别+推流-->
+    <include file="$(find yolo_rtsp)/launch/yolo_rtsp.launch"/>
+    
+    <!--目标跟踪-->
+    <include file="$(find visual_track)/launch/visual_track.launch"/>
+
+</launch>

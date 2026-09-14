@@ -1,0 +1,25 @@
+<launch>
+    <!-- 配置文件 -->
+    <arg name="config_file" default="$(find yolo_rtsp)/config/params.yaml"/>
+
+    <!-- OpenCV 4.5 强制加载（解决4.2/4.5混链导致的cv::resize段错误） -->
+    <env name="LD_PRELOAD"
+         value="/lib/aarch64-linux-gnu/libopencv_core.so.4.5
+                /lib/aarch64-linux-gnu/libopencv_imgproc.so.4.5
+                /lib/aarch64-linux-gnu/libopencv_videoio.so.4.5
+                /lib/aarch64-linux-gnu/libopencv_imgcodecs.so.4.5
+                /lib/aarch64-linux-gnu/libopencv_features2d.so.4.5
+                /lib/aarch64-linux-gnu/libopencv_calib3d.so.4.5
+                /lib/aarch64-linux-gnu/libopencv_dnn.so.4.5
+                /lib/aarch64-linux-gnu/libopencv_flann.so.4.5
+                /lib/aarch64-linux-gnu/libopencv_ml.so.4.5
+                /lib/aarch64-linux-gnu/libopencv_objdetect.so.4.5
+                /lib/aarch64-linux-gnu/libopencv_photo.so.4.5
+                /lib/aarch64-linux-gnu/libopencv_video.so.4.5
+                /home/nvidia/cv_bridge_ws/devel/lib/libcv_bridge.so"/>
+    <!-- 启动节点 -->
+    <node pkg="yolo_rtsp" type="streamer_node" name="yolo_streamer" output="screen" respawn="true" respawn_delay="1">
+        <!-- 参数加载到节点私有命名空间 -->
+        <rosparam file="$(arg config_file)" />
+    </node>
+</launch>

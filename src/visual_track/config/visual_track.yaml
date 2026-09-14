@@ -1,0 +1,36 @@
+image_inverted: true #相机安装正反
+# 目标类别白名单（多类归并：识别成任一垃圾类都视为目标）
+# 按训练模型 yaml 的 names 字典填入对应的 class_id     
+
+# # Classes
+# names:
+#   0: Human
+#   1: Passing_Boat
+#   2: Bottle
+#   3: Buoy
+#   4: Aquatic_Vegetation_Branches
+#   5: Floating_Foam
+#   6: Other_Debris
+target_class_ids: [2,3,4,5,6] 
+
+# 置信度阈值（模型不准时调低，宁允许多追、不挑废） 
+conf_thresh: 0.5
+
+# 接近目标的最大速度 (m/s)
+approach_speed: 0.6
+
+# 最大航向偏移（度）：目标在画面边缘时的偏转角
+# 值越大反应越灵敏，越小越保守
+max_heading_offset: 15.0
+
+# 航向低通滤波系数（0~1）：越小越平滑，越大越灵敏
+heading_alpha: 0.3
+
+# reached 判据
+# 面积超过该归一化阈值即认为到位
+reached_area_thresh: 0.35
+# cy+h/2 超过该归一化值即认为进入收集盲区（贴近船头底边）
+bottom_thresh: 0.90
+
+# 减速区：面积到达该归一化值时开始线性减速（越大越近越慢）
+slow_area: 0.03

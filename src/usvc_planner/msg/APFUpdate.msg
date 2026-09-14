@@ -1,0 +1,7 @@
+float32 repulsive_gain
+float32 attractive_gain
+float32 safe_distance
+float32 influence_distance
+float32 sigma
+float32 min_speed
+float32 max_speed

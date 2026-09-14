@@ -1,0 +1,5 @@
+<launch>
+  <node pkg="visual_track" type="visual_track_node" name="visual_track_node" output="screen">
+    <rosparam file="$(find visual_track)/config/visual_track.yaml"/>
+  </node>
+</launch>

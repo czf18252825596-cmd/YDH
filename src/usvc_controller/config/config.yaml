@@ -1,0 +1,96 @@
+DEVICE_ID: 1              #设备ID，用于标示船体，方便在软件上识别，与通信和控制无关联
+DEVICE_PORT: 5001         #设备端口，船体的TCP服务端口
+DEVICE_SN: "32001D001451"
+DEVICE_TYPE: "ship_calc"  #设备类型，ship_calc代表为船载工控机
+
+control:
+  sail:
+    SPEED: 1.800000
+    Y: 300.000000
+    TOLERANCERADIUS1: 2.000000
+    TOLERANCERADIUS2: 2.500000
+    LAT: 1.000000
+    LON: 1.000000
+
+  back:
+    MAXSPEED: 1.000000
+    MINSPEED: 0.200000
+    LOSDISTANCE: 5.000000
+    OBSTACLE_INFLUENCE_DISTANCE: 20.000000
+    SAFE_DISTANCE: 2.000000
+    REPULSIVE_GAIN: 0.600000
+    ATTRACTIVE_GAIN: 2.000000
+    SIGMA: 3.500000
+    TOLERANCERADIUS: 2.000000
+    Y: 300.000000
+    LAT: 32.819400
+    LON: 119.113885
+
+  path:
+    MAXSPEED: 1.000000
+    MINSPEED: 0.200000
+    LOSDISTANCE: 5.000000
+    OBSTACLE_INFLUENCE_DISTANCE: 20.000000
+    SAFE_DISTANCE: 2.000000
+    REPULSIVE_GAIN: 0.600000
+    ATTRACTIVE_GAIN: 2.000000
+    SIGMA: 3.500000
+    TOLERANCERADIUS: 2.000000
+  
+sensor:
+  lidar:
+    X_DISTANCE: 0.500000
+    Y_DISTANCE: 0.500000
+    Z_DISTANCE: 0.010000
+    ClusterTolerance: 0.400000
+    MinClusterSize: 2
+    MaxClusterSize: 200000
+
+charge:
+    LOW_BATTERY: 20.0    # 低电量返航阈值(%)
+    CHARGE_START: 15.0   # 自动充电阈值(%)
+    CHARGE_STOP: 95.0    # 充电停止阈值(%)
+
+
+enable_switches:
+    mapping_en: 0
+    back_lowbatt_en: 0
+    back_linklost_en: 0
+    vision_en: 1
+
+# 上位机可调参数（planner  + visual_track），由 control_node 广播 /planner_node/tunable_update
+tunable:
+    # ========== usvc_planner 参数 ==========
+    
+    # --- LOS 参数 ---
+    target_speed: 1.0              # 巡航目标速度(m/s)
+    los_distance: 8.0              # LOS预瞄距离(m)
+    waypoint_tolerance: 2.5        # 航点到达容差(m)
+    min_speed_turn: 0.4            # 急弯最低速度(m/s)
+    adaptive_los_scale: 1.5        # ALOS自适应系数
+    
+    # --- 掩码参数 ---
+    safe_margin: 1.5               # 水侧掩码阈值（沿边安全距离）
+    boom_x_max: 7.0                # 喇叭口最前端离雷达距离(m)
+    
+    # ========== visual_track 参数 ==========
+    conf_thresh: 0.5               # 目标置信度阈值
+    max_heading_offset: 15.0       # 最大航向偏移(度)
+    approach_speed: 0.6            # 接近目标最大速度(m/s)
+    heading_alpha: 0.3             # 航向低通滤波系数
+    reached_area_thresh: 0.35      # 到位判据归一化面积阈值
+    bottom_thresh: 0.9            # 到达盲区阈值
+    slow_area: 0.03                # 减速区阈值
+
+
+
+ship:
+  LISTEN_PORT: 2001   #监听端口，用于监听船主控广播的船体信息
+
+upper:
+  BROAD_PORT: 2001    #广播端口，工控机将船体信息广播到该端口
+
+peripheral:
+  PORT:  2000   #广播与监听端口，
+  SN: "32002D001451"
+

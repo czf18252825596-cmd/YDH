@@ -1,0 +1,18 @@
+<launch>
+  <!-- usvc_planner 主节点（仅起 planner_node，不含 usvc_navi / usvc_controller / 雷达驱动）-->
+
+  <!-- 加载参数 -->
+  <rosparam file="$(find usvc_planner)/config/config.yaml" command="load"/>
+
+  <!-- 启动 planner_node -->
+  <node pkg="usvc_planner"
+        type="planner_node"
+        name="planner_node"
+        output="screen"
+        respawn="true"
+        respawn_delay="3">
+    <!-- 节点内部用私有 NodeHandle("~") 读 ns=planner_node 下的参数 -->
+  </node>
+
+  <!-- 可选: 调试用动态重配置服务（后续可加） -->
+</launch>
