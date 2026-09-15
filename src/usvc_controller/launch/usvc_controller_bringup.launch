@@ -2,7 +2,7 @@
     <!-- 加载参数文件 -->
     <rosparam file="$(find usvc_controller)/config/config.yaml" command="load"/>
 
-    <!-- 启动传感器节点 -->
+    <!-- 启动雷达节点 -->
     <node pkg="usvc_controller" type="sensor_node" name="sensor_node" output="screen" respawn="true" respawn_delay="1"   >
     </node>
 

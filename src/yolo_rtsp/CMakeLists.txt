@@ -41,7 +41,6 @@ include_directories(
 add_executable(streamer_node
   src/streamer_node.cpp
   src/python_bridge.cpp
-  src/rtsp_pusher_ffmpeg.cpp
 )
 
 target_link_libraries(streamer_node

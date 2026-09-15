@@ -1,7 +1,5 @@
-# usvc_planner 参数配置（参数命名对齐 USVC config.yaml + YDH navigator 参数）
 # 加载方式: launch 中 <rosparam file="..." command="load"/> (不加 ns)
 # 代码读取: nh.param("/planner_node/xxx", ...) 绝对路径
-# 对齐 YDH otter_planner 习惯（yaml 顶层命名空间 = 节点名）
 
 planner_node:
   # ---------- LOS 制导参数 ----------
@@ -21,9 +19,9 @@ planner_node:
   apf_max_speed: 1.0             # 避障最高速度 (m/s)
 
   # ---------- 雷达参数 ----------
-  # lidar_topic: "/livox/lidar"   # 雷达话题名
-  lidar_topic: "/sensor/lidar_filter"
-  lidar_type: "pointcloud2"      # pointcloud2 或 laserscan
+  # lidar_topic: "/livox/lidar"   # 原雷达话题名  
+  lidar_topic: "/sensor/lidar_filter"  # 预处理后雷达话题名
+  lidar_type: "pointcloud2"      # pointcloud2 或 laserscan，使用3d雷达
   lidar_spatial_mask: true       # 沿边模式是否启用岸侧掩码
 
 

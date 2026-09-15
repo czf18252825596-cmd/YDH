@@ -18,7 +18,6 @@
 #include <geometry_msgs/Vector3.h>
 
 #include "usvc_planner/util.h"
-#include "usvc_planner/geo_util.h"
 #include "usvc_planner/apf_avoid.h"
 #include "usvc_planner/mode_manager.h"
 #include "usvc_planner/los_tracker.h"

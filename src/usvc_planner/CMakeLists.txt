@@ -50,7 +50,6 @@ include_directories(
 
 add_library(${PROJECT_NAME}
   src/util.cpp
-  src/geo_util.cpp
   src/apf_avoid.cpp
   src/mode_manager.cpp
   src/los_tracker.cpp

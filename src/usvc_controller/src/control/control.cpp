@@ -1775,7 +1775,7 @@ RUN_MODE_ENUM Control::executeUser()
 }
 // ================================================================
 // 1：视觉数据槽（由 control_node 的 visualCmdCallback 写入）
-//    供 executeTask 的 EDGE_FOLLOWING 状态机读取
+//    供 executeTask 的 PATH_TRACKING(轨迹) 状态机读取
 // ================================================================
 
 // ---- 1.1 是否有目标（EDGE_FOLLOW → CLEANING 切换条件） ----

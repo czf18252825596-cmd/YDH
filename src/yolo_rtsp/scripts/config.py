@@ -43,9 +43,6 @@ DEFAULT_CONF_THRESH = 0.3   # 默认置信度阈值（0~1）
 # params.yaml 里 python/skip_frames 的值），单独运行时用默认值1
 DEFAULT_SKIP_FRAMES = int(os.environ.get("YOLO_SKIP_FRAMES", "1"))
                             # 1=每帧都推理
-                            # 2=每2帧推理1次
-                            # 3=每3帧推理1次
-                            # GPU吃力时调大
 
 
 # ===================== RTSP输入配置 =====================
@@ -84,23 +81,6 @@ PUSH_BITRATE = int(os.environ.get("PUSH_BITRATE", "4000"))  # 推流码率（kbp
 
 PUSH_WIDTH = int(os.environ.get("PUSH_WIDTH", "1920"))  # 推流输出宽度（像素）
 PUSH_HEIGHT = int(os.environ.get("PUSH_HEIGHT", "1080")) # 推流输出高度（像素） 
-
-# ===================== UDP配置（兼容Qt端，暂未启用）====================
-# 注意：以下默认值仅用于独立测试，正式运行以 params.yaml 为准
-
-UDP_IP = "127.0.0.1"    # UDP发送目标IP
-UDP_PORT = 8888         # UDP发送目标端口
-JPG_QUALITY = 80        # JPG编码质量（0~100，越大画质越好但数据量越大）
-MAX_WIDTH = 640         # 图像最大宽度，超过则等比例缩放
-
-
-# ===================== 控制链路配置 =====================
-# 注意：以下默认值仅用于独立测试，正式运行以 params.yaml 为准
-
-# 使能开关：上位机通过UDP发命令控制"目标识别+推流"总开关
-CONTROL_PORT = 9999    # 工控机监听的UDP端口
-                       # 上位机往这里发 on/off 命令
-
 
 # ===================== 控制变量 =====================
 # 运行时动态变化的状态，不是配置

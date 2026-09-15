@@ -9,9 +9,9 @@ main.py - Python YOLO检测 + RTSP推流 主程序
 
 数据流：
   ┌───────────────────────────────────────────────────────────────┐
-  │  360摄像机 → 读帧线程 → YOLO推理 → 标注画面 → ffmpeg推流    │
-  │                         ↓                                    │
-  │                    检测结果JSON → stdout → C++节点读取       │
+  │  360摄像机 → 读帧线程 → YOLO推理 → 标注画面 → ffmpeg推流         │
+  │                         ↓                                     │
+  │                    检测结果JSON → stdout → C++节点读取          │
   └───────────────────────────────────────────────────────────────┘
 
 输出说明：
@@ -118,21 +118,7 @@ def main():
     rtsp_thread = threading.Thread(target=read_rtsp_frames, args=(frame_queue,))
     rtsp_thread.daemon = True
     rtsp_thread.start()
-
-    # ========== 3.1 启动使能监听 ==========
-    # 使能由 controller 的 vision_en 经 /yolo/enable 话题驱动（并入统一开关）
-    # 原 UDP 9999 独立使能通道已废弃。roslaunch 环境下用 rospy 订阅回调，
-    # 需在独立线程 spin 才能触发订阅回调。
-    # if rospy:
-    #     def _spin():
-    #         while not control_vars["stop_flag"] and not rospy.is_shutdown():
-    #             rospy.spin_once()
-    #             import time as _t
-    #             _t.sleep(0.05)
-    #     ctrl_thread = threading.Thread(target=_spin)
-    #     ctrl_thread.daemon = True
-    #     ctrl_thread.start()
-
+    
     # ========== 4. 推流器初始化 ==========
     # 推流器在收到第一帧后才创建（需要先知道画面的实际宽高）
     pusher = None

@@ -4,21 +4,18 @@
  * 功能：协调所有模块工作
  *   1. 读取360摄像机的RTSP流
  *   2. 启动Python子进程进行YOLO推理
- *   3. 推两路RTSP流（原始+标注）
+ *   3. 推RTSP流（标注的）
  *   4. 发布ROS话题供其他节点使用
  *
  * 数据流：
  *   360摄像机 → C++读帧 → Python推理 → 标注画面
- *            ↘ 推raw流      ↘ 推annotated流
- *            ↘ 发ROS话题     ↘ 发检测结果话题
- *
+
  * 关键参数：
  *   - rtsp_url: 360摄像机的RTSP地址
  *   - rtsp_port: RTSP推流端口（8554是mediamtx默认端口）
  *   - model_path: YOLO模型文件路径
  *   - conf_thresh: 置信度阈值（低于此值的检测框被丢弃）
  */
-
 #include <ros/ros.h>
 #include <sensor_msgs/Image.h>
 #include <std_srvs/Empty.h>
@@ -41,13 +38,10 @@
 #include <cstring>
 
 #include "yolo_rtsp/python_bridge.h"
-#include "yolo_rtsp/rtsp_pusher.h"
 #include "yolo_rtsp/DetectionArray.h"
 
 using namespace yolo_rtsp;
-// ========== 全局状态 ==========
-// ROS服务回调必须是独立的函数，拿不到main函数里的局部变量，
-// 所以回调要修改的开关只能放全局
+
 static bool g_running = false;  // 主循环运行开关，false时主循环退出
 
 /**
@@ -117,30 +111,6 @@ static void enableCallback(const std_msgs::Bool::ConstPtr& msg)
     }
 }
 
-/**
- * /yolo/start 服务回调 (兼容保留)
- */
-static bool startYoloCallback(std_srvs::Empty::Request& req,
-                               std_srvs::Empty::Response& res)
-{
-    g_running = true;  // 打开主循环开关
-    ROS_INFO("Streamer started");
-    return true;
-}
-
-/**
- * /yolo/stop 服务回调
- * 功能：停止检测和推流
- * 调用方式：rosservice call /yolo/stop
- */
-static bool stopYoloCallback(std_srvs::Empty::Request& req,
-                              std_srvs::Empty::Response& res)
-{
-    g_running = false;  // 关闭主循环开关，主循环会退出
-    ROS_INFO("Streamer stopped");
-    return true;
-}
-
 int main(int argc, char** argv)
 {
     // 忽略SIGPIPE（ffmpeg管道断开时不会杀死进程）
@@ -148,33 +118,10 @@ int main(int argc, char** argv)
 
     // ========== 1. ROS初始化 ==========
     // ros::init会初始化ROS系统，创建节点
-    // 第三个参数"streamer_node"是节点名，可以用rosnode list查看
     ros::init(argc, argv, "streamer_node");
     ros::NodeHandle nh;       // 全局句柄：用于发布话题、注册服务
     ros::NodeHandle pnh("~"); // 私有句柄：用于读取launch文件中的<param>
                               // "~"代表当前节点的命名空间
-    // // ===== 自动启动 mediaMTX =====
-    // {   // 检查 mediaMTX 是否已运行
-    //     int check = system("pgrep -f mediamtx > /dev/null 2>&1");
-    //     if (check != 0) {
-    //         ROS_INFO("mediaMTX not running, starting...");
-    //         int ret = system("/home/nvidia/mediamtx/mediamtx /home/nvidia/mediamtx/mediamtx.yml &");
-    //         if (ret == 0) {
-    //             ROS_INFO("mediaMTX started successfully");
-    //             // 等待 mediaMTX 就绪
-    //             sleep(2);
-    //         } else {
-    //             ROS_WARN("Failed to start mediaMTX, continuing anyway...");
-    //         }
-    //     } else {
-    //         ROS_INFO("mediaMTX already running");
-    //     }
-    // }
-
-    // ========== 2. 读取launch文件中的参数 ==========
-    // 格式：pnh.param<类型>("参数名", 变量, 默认值)
-    // 参数名对应launch文件中的：<param name="xxx" value="yyy"/>
-
     // --- 相机配置 ---
     std::string rtsp_url;     // 360摄像机的RTSP地址
     int width, height, fps;   // 视频分辨率和帧率
@@ -186,18 +133,15 @@ int main(int argc, char** argv)
 
     // --- RTSP服务器配置 ---
     int rtsp_port;                    // RTSP服务器端口
-    std::string raw_path;             // 原始流路径（VLC播放地址的后缀）
     std::string annotated_path;       // 标注流路径
     int bitrate;                      // 推流码率（kbps）
-    bool enable_raw;
+
     int skip_frames; 
     int push_width, push_height;
 
     pnh.param<int>("rtsp_server/port", rtsp_port, 8554);  // 默认8554（mediamtx默认端口）
-    pnh.param<std::string>("rtsp_server/raw_path", raw_path, "raw");
     pnh.param<std::string>("rtsp_server/annotated_path", annotated_path, "annotated");
     pnh.param<int>("rtsp_server/bitrate", bitrate, 1000);  // 默认1000kbps
-    pnh.param<bool>("rtsp_server/enable_raw", enable_raw, false);
 
     pnh.param<int>("rtsp_server/push_width", push_width, 320);
     pnh.param<int>("rtsp_server/push_height", push_height, 240);
@@ -215,35 +159,19 @@ int main(int argc, char** argv)
                // 跳帧数：每N帧推理1次（CPU/GPU吃力时调大）
     pnh.param<int>("python/skip_frames", skip_frames, 1);      // 默认1=每帧都推理
 
-    // --- 输出配置 ---
-    bool publish_topics;        // 是否发布ROS话题
-    pnh.param<bool>("output/publish_ros_topics", publish_topics, true);
-
     // 打印配置信息（便于调试）
     ROS_INFO("Camera RTSP URL: %s", rtsp_url.c_str());
     ROS_INFO("Resolution: %dx%d @ %d fps", width, height, fps);
-    ROS_INFO("RTSP Server: port=%d, raw=/%s, annotated=/%s",
-             rtsp_port, raw_path.c_str(), annotated_path.c_str());
+    ROS_INFO("RTSP Server: port=%d, annotated=/%s",
+             rtsp_port, annotated_path.c_str());
 
-    // ========== 3. 创建ROS话题发布器 ==========
-    // advertise<消息类型>("话题名", 队列长度)
-    // 队列长度1：只保留最新一帧，网络慢时丢旧帧也不积压
-
-    // 原始图像话题：其他节点可以订阅这个话题获取原始画面
-    ros::Publisher raw_image_pub = nh.advertise<sensor_msgs::Image>("/camera/image", 1);
-
-    // 检测结果话题：其他节点可以订阅这个话题获取YOLO检测结果
+    // ========== 3.话题发布==========
     ros::Publisher detection_pub = nh.advertise<yolo_rtsp::DetectionArray>("/yolo/detections", 1);
 
-    // ========== 4. 注册ROS服务(兼容) 与 使能话题订阅 ==========
-    // 服务允许其他节点远程控制本节点的启停(兼容旧控制)
-    ros::ServiceServer start_srv = nh.advertiseService("/yolo/start", startYoloCallback);
-    ros::ServiceServer stop_srv = nh.advertiseService("/yolo/stop", stopYoloCallback);
-    // 使能话题：由 controller 的 vision_en 驱动，统一控制识别+推流启停
+    // 话题订阅
     ros::Subscriber enable_sub = nh.subscribe("/yolo/enable", 1, enableCallback);
-    g_running = false;  // 默认关闭，等待 /yolo/enable 开启
 
-    // ========== 5. 启动YOLO推理进程（Python子进程）==========
+    // ========== 4. 启动YOLO推理进程（Python子进程）==========
     // PythonBridge负责管理Python子进程的生命周期
     std::unique_ptr<PythonBridge> python_bridge;
     if (!script_dir.empty() && !model_path.empty())
@@ -268,17 +196,13 @@ int main(int argc, char** argv)
         ROS_WARN("python/script_dir or python/model_path is empty, YOLO detection disabled");
     }
 
-    // ========== 6. 初始化raw流推流器 ==========
-    // raw流 = 原始画面（没有画检测框）
-    // 推到本机的mediamtx服务器，上位机通过VLC播放
-
     // 开机自检：mediaMTX没启动的话，两路推流都会失败
     // 提前报警，避免"跑起来了但流是黑的"这种难排查的问题
     if (!probeTcpPort("127.0.0.1", rtsp_port))
     {
         ROS_ERROR("==================================================");
         ROS_ERROR("WARNING: nothing listening on port %d (mediaMTX not started?)", rtsp_port);
-        ROS_ERROR("Both RTSP streams (raw & annotated) will FAIL to publish!");
+        ROS_ERROR("Both RTSP streams (annotated) will FAIL to publish!");
         ROS_ERROR("Start mediaMTX first, then relaunch this node:");
         ROS_ERROR("  cd ~/mediamtx && ./mediamtx &");
         ROS_ERROR("==================================================");
@@ -288,32 +212,9 @@ int main(int argc, char** argv)
         ROS_INFO("mediaMTX server OK (port %d)", rtsp_port);
     }
 
-    std::unique_ptr<RtspPusher> raw_pusher;
-    if (enable_raw){
-        raw_pusher = std::make_unique<RtspPusher>();
-        {
-        // RTSP地址格式：rtsp://127.0.0.1:8554/raw
-        // 127.0.0.1 = 本机（mediamtx运行在同一台机器上）
-        // 8554 = mediamtx默认RTSP端口
-        // raw = 流路径（VLC播放时输入rtsp://工控机IP:8554/raw）
-        std::string raw_url = "rtsp://127.0.0.1:" + std::to_string(rtsp_port) + "/" + raw_path;
-
-        // 初始化推流器：指定分辨率、帧率、码率
-        if (!raw_pusher->init(raw_url, width, height, fps, bitrate))
-            {
-            ROS_ERROR("Failed to init raw RTSP pusher");
-            raw_pusher.reset();  // 初始化失败则禁用
-            }
-        }
-    }
- 
-
-    // ========== 7. 打开360摄像机 ==========
+    // ========== 5. 打开360摄像机 ==========
     // cv::VideoCapture可以通过RTSP URL直接读取网络摄像机
-    //
-    // 为什么带重试：相机源可能比本节点晚就绪——例如开机自启动时相机还没起来，
-    // 或测试时先起了roslaunch、假相机ffmpeg还没推上流。
-    // 一次失败就退出太脆弱，这里最多重试10次、每次间隔3秒（共约30秒）。
+    // 重试相机源，这最多重试10次、每次间隔3秒（共约30秒）。
     cv::VideoCapture cap;
     const int MAX_CAM_RETRIES = 10;   // 相机最大重试次数
     for (int attempt = 1; attempt <= MAX_CAM_RETRIES; attempt++)
@@ -333,7 +234,7 @@ int main(int argc, char** argv)
     }
     if (!cap.isOpened())
     {
-        // 重试耗尽仍打不开：给出两个最可能的排查方向
+        // 重试失败，打日志
         ROS_ERROR("Camera failed to open after %d retries: %s", MAX_CAM_RETRIES, rtsp_url.c_str());
         ROS_ERROR("Check: 1) is anything PUBLISHING this stream? 2) mediaMTX log shows 'publishing to path'?");
         return 1;  // 相机最终打不开，退出
@@ -348,7 +249,7 @@ int main(int argc, char** argv)
         if (!python_bridge->start(script_dir, model_path, conf_thresh))
         {
             ROS_ERROR("Failed to start python bridge, YOLO detection disabled");
-            python_bridge.reset();  // 释放对象，后面按"无YOLO"继续跑
+            python_bridge.reset();  // 释放对象
         }
     }
 
@@ -361,7 +262,7 @@ int main(int argc, char** argv)
     // ========== 8. 主循环：读帧 → 发话题 → 推流 ==========
     while (ros::ok())
     {
-        // 8.0 使能门控：false 时挂起，等待 /yolo/enable 再次开启（可反复启停）
+        // 6.0 整个程序使能开关：false 时挂起，等待 /yolo/enable 再次开启（可反复启停）
         if (!g_running)
         {
             ros::spinOnce();
@@ -371,41 +272,14 @@ int main(int argc, char** argv)
 
         cv::Mat frame;
 
-        // 8.1 从相机读取一帧
+        // 6.1 从相机读取一帧
         if (cap.read(frame) && !frame.empty())
         {
             frames_read++;
             cam_fail_count = 0;  // 读到帧了，失败计数清零
 
-            // 8.2 原始画面发布到ROS话题
-            // 其他节点（如rviz、rosbag）可以订阅 /camera/image 获取画面
-            if (publish_topics)
-            {
-                try
-                {
-                    cv_bridge::CvImage cv_image;
-                    cv_image.header.stamp = ros::Time::now();
-                    cv_image.header.frame_id = "camera";
-                    cv_image.encoding = sensor_msgs::image_encodings::BGR8;
-                    cv_image.image = frame.clone();
-                    raw_image_pub.publish(cv_image.toImageMsg());
-                }
-                catch (const std::exception& e)
-                {
-                    // 注意：cv_bridge抛的是cv_bridge::Exception（继承std::runtime_error），
-                    // 不是cv::Exception，所以这里必须catch std::exception才接得住
-                    ROS_WARN("cv_bridge publish failed: %s (frame: %dx%d)", e.what(), frame.cols, frame.rows);
-                }
-            }
-
-            // 8.3 原始画面推raw流（上位机可以VLC播放）
-            if (raw_pusher)
-            {
-                raw_pusher->pushFrame(frame);
-            }
-
-            // 8.4 发布检测结果（从Python子进程获取）
-            if (python_bridge && publish_topics)
+            // 6.2 发布检测结果（从Python子进程获取）
+            if (python_bridge)
             {
                 // getLatestDetections()获取Python最近一次推理的结果
                 DetectionResult result = python_bridge->getLatestDetections();
@@ -435,11 +309,7 @@ int main(int argc, char** argv)
         }
         else
         {
-            // 读帧失败处理。
-            // 关键机制：OpenCV的RTSP会话一旦被服务器断开，read()会永远返回false，
-            // 它自己不会重连——必须手动release()再open()才能恢复。
-            // 这在现场很重要：360相机网络抖一下、重启一下，节点必须能自愈，
-            // 否则无人值守就是一句空话。
+            // 读帧失败处理
             cam_fail_count++;
 
             if (cam_fail_count < 30)
@@ -474,22 +344,6 @@ int main(int argc, char** argv)
                 {
                     cam_fail_count = 0;
                     ROS_INFO("Camera reconnected successfully");
-
-                    // 推流器很可能在断流期间也死了（mediaMTX把空闲的RTSP会话
-                    // 超时断开→ffmpeg写入失败退出）。重启它，raw流恢复发布
-                    if (raw_pusher)
-                    {
-                        std::string raw_url = "rtsp://127.0.0.1:" + std::to_string(rtsp_port) + "/" + raw_path;
-                        if (raw_pusher->init(raw_url, width, height, fps, bitrate))
-                        {
-                            ROS_INFO("Raw RTSP pusher restarted");
-                        }
-                        else
-                        {
-                            ROS_ERROR("Failed to restart raw RTSP pusher");
-                            raw_pusher.reset();
-                        }
-                    }
                 }
                 else
                 {
@@ -499,10 +353,10 @@ int main(int argc, char** argv)
             }
         }
 
-        // 8.5 处理一次积压的ROS服务请求
+        // 6.3 处理一次积压的ROS服务请求
         ros::spinOnce();
 
-        // 8.6 Python进程存活检查：崩溃立刻报告（只报一次）
+        // 6.4 Python进程存活检查：崩溃立刻报告（只报一次）
         if (python_bridge && !python_bridge->isAlive() && !python_dead_reported)
         {
             python_dead_reported = true;
@@ -512,13 +366,12 @@ int main(int argc, char** argv)
             ROS_ERROR("  3. Run manually to see the error: python3 scripts/main.py --model det/best.pt");
         }
 
-        // 8.7 心跳日志：每5秒打印一次状态
+        // 6.5 心跳日志：每5秒打印一次状态
         // 正常时每5秒看到一条；卡死时心跳停止——两种情况一眼区分
         if ((ros::Time::now() - last_heartbeat).toSec() >= 5.0)
         {
-            ROS_INFO("[heartbeat] frames(5s)=%d | raw_push=%s | python=%s",
+            ROS_INFO("[heartbeat] frames(5s)=%d | python=%s",
                      frames_read,
-                     raw_pusher ? "running" : "off",
                      python_bridge ? (python_bridge->isAlive() ? "alive" : "DEAD") : "off");
             frames_read = 0;
             last_heartbeat = ros::Time::now();
@@ -527,10 +380,8 @@ int main(int argc, char** argv)
         loop_rate.sleep();
     }
 
-    // ========== 9. 清理退出 ==========
+    // ========== 7. 清理退出 ==========
     cap.release();  // 释放相机
-    // python_bridge和raw_pusher是unique_ptr，离开main时自动析构
-    // 析构时会自动停止Python子进程、关闭推流管线
     ROS_INFO("streamer_node exited");
     return 0;
 }

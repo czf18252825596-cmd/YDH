@@ -918,11 +918,6 @@ static void plannerCmdCallback(const usvc_planner::GuidanceCmd& msg)
     ec.isAvoiding = msg.is_avoiding;
     ec.reached    = msg.reached;
     m_Control.setEdgeCtrl(ec);
-
-    // 把沿边期望航向实时作为基准，给visual_track使用
-    std_msgs::Float32 f;
-    f.data = msg.obj_heading;
-    visual_heading_pub.publish(f);
 }
 
 
@@ -977,7 +972,7 @@ static int findNearestTrackWaypoint(double current_lat, double current_lon,
     }
     return nearest_idx;
 }
-
+//沿边任务启动时，生产沿边任务路径发布到“/usvc_planner/path”
 static void plannerFeedIfNeeded(const RunCtrl_t& runCtrl)
 {
     bool wantRun = (runCtrl.runMode    == RUN_MODE_ENUM::TASK)
