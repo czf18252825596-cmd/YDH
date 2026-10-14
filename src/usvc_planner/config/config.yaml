@@ -3,8 +3,8 @@
 
 planner_node:
   # ---------- LOS 制导参数 ----------
-  target_speed: 1.2              # 目标速度 (m/s)
-  los_distance: 5.0              # LOS 预瞄距离 (m)
+  target_speed: 1.0              # 目标速度 (m/s)
+  los_distance: 8.0              # LOS 预瞄距离 (m)
   waypoint_tolerance: 2.5       # 航点到达容差 (m)
   min_speed_turn: 0.4            # 急弯最低速度 (m/s)
   adaptive_los_scale: 1.5        # ALOS 自适应系数（船离路径越远预瞄点拉得越长）
@@ -23,11 +23,12 @@ planner_node:
   lidar_topic: "/sensor/lidar_filter"  # 预处理后雷达话题名
   lidar_type: "pointcloud2"      # pointcloud2 或 laserscan，使用3d雷达
   lidar_spatial_mask: true       # 沿边模式是否启用岸侧掩码
-
+  safe_margin: 1.5               # 水侧掩码阈值 (m)
+  boom_x_max: 7.0                # 喇叭口最前端离雷达距离 (m)
 
   # ---------- 启动初始状态 ----------
   start_run_mode: 0              # 0=沿边  1=自主导航
-  start_task_state: 1            # 0=停止  1=开始
+  start_task_state: 0            # 0=停止  1=开始
 
   # ---------- 调试 ----------
   debug_print: true              # 是否打印调试日志

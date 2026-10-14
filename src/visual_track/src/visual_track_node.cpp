@@ -30,14 +30,14 @@ class VservoNode {
  public:
   VservoNode() {
     ros::NodeHandle pnh("~"); 
-    // tunable参数：硬编码默认值，等待 control_node 通过 /planner_node/tunable_update 话题更新
-    conf_thresh_         = 0.5f;   
-    approach_speed_      = 0.6f;   
-    reached_area_thresh_ = 0.35f;  
-    max_heading_offset_  = 15.0f;  
-    heading_alpha_       = 0.3f;   
-    bottom_thresh_       = 0.90f;
-    slow_area_           = 0.03f;
+    // 先从本包 visual_track.yaml 读取默认参数（单包仿真直接生效；联调时由 latched 话题覆盖）
+    pnh.param<float>("conf_thresh",         conf_thresh_,         0.5f);
+    pnh.param<float>("approach_speed",      approach_speed_,      0.6f);
+    pnh.param<float>("reached_area_thresh", reached_area_thresh_, 0.35f);
+    pnh.param<float>("max_heading_offset",  max_heading_offset_,  15.0f);
+    pnh.param<float>("heading_alpha",       heading_alpha_,       0.3f);
+    pnh.param<float>("bottom_thresh",       bottom_thresh_,       0.92f);
+    pnh.param<float>("slow_area",           slow_area_,           0.03f);
     std::vector<int> ids;
     pnh.getParam("target_class_ids", ids);                    //清理名单
     for (int i : ids) target_class_ids_.push_back(i);
@@ -68,13 +68,13 @@ class VservoNode {
   yolo_rtsp::DetectionArray last_det_;  // 最近一帧
   bool           has_det_ = false;
 
-    float conf_thresh_   = 0.5f;
-    float approach_speed_  = 0.8f;
+    float conf_thresh_         = 0.5f;
+    float approach_speed_      = 0.6f;
     float reached_area_thresh_ = 0.35f;
-    float bottom_thresh_  = 0.9f;
-    float slow_area_      = 0.03f;
-    float max_heading_offset_ = 15.f;
-    float heading_alpha_  = 0.3f;
+    float bottom_thresh_       = 0.92f;
+    float slow_area_           = 0.03f;
+    float max_heading_offset_  = 15.0f;
+    float heading_alpha_       = 0.3f;
     float filtered_theta_   = 0.f;
     float filtered_speed_   = 0.f;
     bool  inverted_         = false;   // 相机安装正反 true=倒装需上下翻转

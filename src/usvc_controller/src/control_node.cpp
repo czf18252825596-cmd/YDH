@@ -75,6 +75,25 @@ static ros::ServiceServer charge_param_service;
 
 static ros::Publisher apf_update_pub;//APF参数更新topic
 static ros::Publisher tunable_update_pub;//上位机可调参数广播topic
+static usvc_planner::TunableParams g_tunable_params;
+
+// 显式赋非零安全初值，防止 static 零初始化或读取失败导致船速为 0
+static void initDefaultTunableParams(usvc_planner::TunableParams& t) {
+    t.target_speed        = 1.0;
+    t.los_distance        = 8.0;
+    t.waypoint_tolerance  = 2.5;
+    t.min_speed_turn      = 0.4;
+    t.adaptive_los_scale  = 1.5;
+    t.safe_margin         = 1.5;
+    t.boom_x_max          = 7.0;
+    t.conf_thresh         = 0.5;
+    t.max_heading_offset  = 15.0;
+    t.approach_speed      = 0.6;
+    t.heading_alpha       = 0.3;
+    t.reached_area_thresh = 0.35;
+    t.bottom_thresh       = 0.92;
+    t.slow_area           = 0.03;
+}
 
 //出航参数
 static bool sailParamsCallback(usvc_controller::UpdateParams::Request& req, usvc_controller::UpdateParams::Response& res) 
@@ -432,6 +451,8 @@ static bool pathParamsCallback(usvc_controller::UpdateParams::Request& req, usvc
     apf_msg.min_speed          = Param_PathTracking.MINSPEED;
     apf_msg.max_speed          = Param_PathTracking.MAXSPEED;
     apf_update_pub.publish(apf_msg);
+    res.success = true;
+    res.message = "Path parameters updated successfully";
     ROS_INFO("[control_node] APF 参数已同步给 planner");
     return true;
 }
@@ -452,67 +473,33 @@ static bool tunableParamsCallback(usvc_controller::UpdateParams::Request& req,
         return true;
     }
 
-    usvc_planner::TunableParams t;
-    // 先赋默认值，仅覆盖收到的字段（未传的保持上次/默认）
-    // ========== usvc_planner 参数 ==========
-    // --- LOS 参数 ---
-    t.target_speed = 1.0;
-    t.los_distance = 5.0; t.waypoint_tolerance = 2.5;
-    t.min_speed_turn = 0.4; t.adaptive_los_scale = 1.5;
-    // --- 掩码参数 ---
-    t.safe_margin = 1.5; t.boom_x_max = 7.0;
-    // ========== visual_track 参数 ==========
-    t.conf_thresh = 0.5; t.max_heading_offset = 15.0; t.approach_speed = 0.6;
-    t.heading_alpha = 0.3; t.reached_area_thresh = 0.35;
-    t.bottom_thresh = 0.92; t.slow_area = 0.03;
-
+    // 在当前内存真值 g_tunable_params 基础上增量更新，未传字段保持上次值
     for (size_t i = 0; i < req.param_names.size(); i++) {
         const std::string& name = req.param_names[i];
         double v = std::stod(req.param_values[i]);
+
         // ========== usvc_planner 参数 ==========
-        // --- LOS 参数 ---
-        if      (name == "target_speed")      t.target_speed = v;
-        else if (name == "los_distance")      t.los_distance = v;
-        else if (name == "waypoint_tolerance")t.waypoint_tolerance = v;
-        else if (name == "min_speed_turn")    t.min_speed_turn = v;
-        else if (name == "adaptive_los_scale")t.adaptive_los_scale = v;
-        // --- 掩码参数 ---
-        else if (name == "safe_margin")       t.safe_margin = v;
-        else if (name == "boom_x_max")        t.boom_x_max = v;
+        if      (name == "target_speed")        g_tunable_params.target_speed = v;
+        else if (name == "los_distance")        g_tunable_params.los_distance = v;
+        else if (name == "waypoint_tolerance")  g_tunable_params.waypoint_tolerance = v;
+        else if (name == "min_speed_turn")      g_tunable_params.min_speed_turn = v;
+        else if (name == "adaptive_los_scale")  g_tunable_params.adaptive_los_scale = v;
+        else if (name == "safe_margin")         g_tunable_params.safe_margin = v;
+        else if (name == "boom_x_max")          g_tunable_params.boom_x_max = v;
         // ========== visual_track 参数 ==========
-        else if (name == "conf_thresh")       t.conf_thresh = v;
-        else if (name == "max_heading_offset")t.max_heading_offset = v;
-        else if (name == "approach_speed")    t.approach_speed = v;
-        else if (name == "heading_alpha")     t.heading_alpha = v;
-        else if (name == "reached_area_thresh") t.reached_area_thresh = v;
-        else if (name == "bottom_thresh")     t.bottom_thresh = v;
-        else if (name == "slow_area")         t.slow_area = v;
+        else if (name == "conf_thresh")         g_tunable_params.conf_thresh = v;
+        else if (name == "max_heading_offset")  g_tunable_params.max_heading_offset = v;
+        else if (name == "approach_speed")      g_tunable_params.approach_speed = v;
+        else if (name == "heading_alpha")       g_tunable_params.heading_alpha = v;
+        else if (name == "reached_area_thresh") g_tunable_params.reached_area_thresh = v;
+        else if (name == "bottom_thresh")       g_tunable_params.bottom_thresh = v;
+        else if (name == "slow_area")           g_tunable_params.slow_area = v;
         else ROS_WARN("[tunable] Unknown parameter: %s", name.c_str());
     }
 
-    // 持久化到 config 供冷启动恢复
-    std::string config_file = ros::package::getPath("usvc_controller") + "/config/config.yaml";
-    // ========== usvc_planner 参数 ==========
-    // --- LOS 参数 ---
-    ConfigManagerTool::updateParamInFile(config_file, "tunable/target_speed", t.target_speed);
-    ConfigManagerTool::updateParamInFile(config_file, "tunable/los_distance", t.los_distance);
-    ConfigManagerTool::updateParamInFile(config_file, "tunable/waypoint_tolerance", t.waypoint_tolerance);
-    ConfigManagerTool::updateParamInFile(config_file, "tunable/min_speed_turn", t.min_speed_turn);
-    ConfigManagerTool::updateParamInFile(config_file, "tunable/adaptive_los_scale", t.adaptive_los_scale);
-    // --- 掩码参数 ---
-    ConfigManagerTool::updateParamInFile(config_file, "tunable/safe_margin", t.safe_margin);
-    ConfigManagerTool::updateParamInFile(config_file, "tunable/boom_x_max", t.boom_x_max);
-    // ========== visual_track 参数 ==========
-    ConfigManagerTool::updateParamInFile(config_file, "tunable/conf_thresh", t.conf_thresh);
-    ConfigManagerTool::updateParamInFile(config_file, "tunable/max_heading_offset", t.max_heading_offset);
-    ConfigManagerTool::updateParamInFile(config_file, "tunable/approach_speed", t.approach_speed);
-    ConfigManagerTool::updateParamInFile(config_file, "tunable/heading_alpha", t.heading_alpha);
-    ConfigManagerTool::updateParamInFile(config_file, "tunable/reached_area_thresh", t.reached_area_thresh);
-    ConfigManagerTool::updateParamInFile(config_file, "tunable/bottom_thresh", t.bottom_thresh);
-    ConfigManagerTool::updateParamInFile(config_file, "tunable/slow_area", t.slow_area);
-
-    // 广播给 planner 与 visual_track
-    tunable_update_pub.publish(t);
+    // YAML 落盘已由 upper_node 统一完成，此处不再重复写文件，消除双写冲突
+    // 广播给 planner 与 visual_track（latched）
+    tunable_update_pub.publish(g_tunable_params);
     ROS_INFO("[control_node] 上位机可调参数已同步给 planner/visual_track");
     res.success = true;
     res.message = "tunable params updated";
@@ -1114,16 +1101,15 @@ int main(int argc, char** argv)
     m_Control.setParam_Back(Param_Back);
 
     Param_PathTracking_t Param_PathTracking;
-    nh.param<double>("control/path/MAXSPEED", Param_PathTracking.MAXSPEED, 1.0);
-    nh.param<double>("control/path/MINSPEED", Param_PathTracking.MINSPEED, 1.0);
-    nh.param<double>("control/path/LOSDISTANCE", Param_PathTracking.LOSDISTANCE, 1.0);
-    nh.param<double>("control/path/OBSTACLE_INFLUENCE_DISTANCE", Param_PathTracking.OBSTACLE_INFLUENCE_DISTANCE, 1.0);
-    nh.param<double>("control/path/SAFE_DISTANCE", Param_PathTracking.SAFE_DISTANCE, 1.0);
-    nh.param<double>("control/path/REPULSIVE_GAIN", Param_PathTracking.REPULSIVE_GAIN, 1.0);
-    nh.param<double>("control/path/ATTRACTIVE_GAIN", Param_PathTracking.ATTRACTIVE_GAIN, 1.0);
-    nh.param<double>("control/path/SIGMA", Param_PathTracking.SIGMA, 1.0);
-    
-    nh.param<double>("control/path/TOLERANCERADIUS", Param_PathTracking.TOLERANCERADIUS, 1.0);
+    nh.param<double>("control/path/MAXSPEED",                    Param_PathTracking.MAXSPEED,                    1.0);
+    nh.param<double>("control/path/MINSPEED",                    Param_PathTracking.MINSPEED,                    0.2);
+    nh.param<double>("control/path/LOSDISTANCE",                 Param_PathTracking.LOSDISTANCE,                 5.0);
+    nh.param<double>("control/path/OBSTACLE_INFLUENCE_DISTANCE", Param_PathTracking.OBSTACLE_INFLUENCE_DISTANCE, 20.0);
+    nh.param<double>("control/path/SAFE_DISTANCE",               Param_PathTracking.SAFE_DISTANCE,               2.0);
+    nh.param<double>("control/path/REPULSIVE_GAIN",              Param_PathTracking.REPULSIVE_GAIN,              0.6);
+    nh.param<double>("control/path/ATTRACTIVE_GAIN",             Param_PathTracking.ATTRACTIVE_GAIN,             2.0);
+    nh.param<double>("control/path/SIGMA",                       Param_PathTracking.SIGMA,                       3.5);
+    nh.param<double>("control/path/TOLERANCERADIUS",             Param_PathTracking.TOLERANCERADIUS,             2.0);
     m_Control.setParam_PathTracking(Param_PathTracking);
 
     // enable_switches 冷启动恢复（launch rosparam 已加载 config.yaml 的 enable_switches 节）
@@ -1167,42 +1153,68 @@ int main(int argc, char** argv)
         enableSwitches_bc_pub.publish(es_init);
     }
 
-    // planner 订阅和发布 
-    edge_cmd_sub = nh.subscribe("/usvc_planner/cmd",  10, plannerCmdCallback);
-    edge_path_pub = nh.advertise<usvc_planner::LosPath>("/usvc_planner/path", 1);
-    apf_update_pub = nh.advertise<usvc_planner::APFUpdate>("/planner_node/apf_update", 1);
-    tunable_update_pub = nh.advertise<usvc_planner::TunableParams>("/planner_node/tunable_update", 1);
-    // 冷启动：从 config 读 tunable 段并广播一次，供 planner/visual_track 订阅到初始值
-    {
-        usvc_planner::TunableParams t0;
-        // ========== usvc_planner 参数 ==========
-        // --- LOS 参数 ---
-        nh.param<double>("tunable/target_speed",      t0.target_speed,      1.0);
-        nh.param<double>("tunable/los_distance",      t0.los_distance,      5.0);
-        nh.param<double>("tunable/waypoint_tolerance",t0.waypoint_tolerance,2.5);
-        nh.param<double>("tunable/min_speed_turn",    t0.min_speed_turn,    0.4);
-        nh.param<double>("tunable/adaptive_los_scale",t0.adaptive_los_scale,1.5);
-        // --- 掩码参数 ---
-        nh.param<double>("tunable/safe_margin",       t0.safe_margin,       1.5);
-        nh.param<double>("tunable/boom_x_max",        t0.boom_x_max,        7.0);
-        // ========== visual_track 参数 ==========
-        nh.param<double>("tunable/conf_thresh",       t0.conf_thresh,       0.5);
-        nh.param<double>("tunable/max_heading_offset",t0.max_heading_offset,15.0);
-        nh.param<double>("tunable/approach_speed",    t0.approach_speed,    0.6);
-        nh.param<double>("tunable/heading_alpha",     t0.heading_alpha,     0.3);
-        nh.param<double>("tunable/reached_area_thresh",t0.reached_area_thresh,0.35);
-        nh.param<double>("tunable/bottom_thresh",     t0.bottom_thresh,     0.92);
-        nh.param<double>("tunable/slow_area",         t0.slow_area,         0.03);
-        tunable_update_pub.publish(t0);
-    }
-    edge_ctrl_pub = nh.advertise<usvc_planner::OtterCtrl>("/usvc_planner/ctrl", 1);
-    // visual_track 订阅和发布 
-    visual_cmd_sub = nh.subscribe("/visual_track/cmd", 10, visualCmdCallback);
-    vt_has_target_sub = nh.subscribe("/visual_track/has_target", 10, vtHasTargetCallback);
-    visual_ctrl_pub = nh.advertise<visual_track::VisualTrack>("/visual_track/ctrl", 1);
-    visual_heading_pub = nh.advertise<std_msgs::Float32>("/visual_track/ref_heading", 1);
+    // planner 订阅和发布（关键参数话题开启 latch = true，解决晚启动节点丢包）
+    edge_cmd_sub       = nh.subscribe("/usvc_planner/cmd", 10, plannerCmdCallback);
+    edge_path_pub      = nh.advertise<usvc_planner::LosPath>("/usvc_planner/path", 1);
+    apf_update_pub     = nh.advertise<usvc_planner::APFUpdate>("/planner_node/apf_update", 1, true);
+    tunable_update_pub = nh.advertise<usvc_planner::TunableParams>("/planner_node/tunable_update", 1, true);
+    edge_ctrl_pub      = nh.advertise<usvc_planner::OtterCtrl>("/usvc_planner/ctrl", 1, true);
 
-    vision_enable_pub = nh.advertise<std_msgs::Bool>("/yolo/enable",1);
+    // visual_track 与 yolo 订阅和发布
+    visual_cmd_sub     = nh.subscribe("/visual_track/cmd", 10, visualCmdCallback);
+    vt_has_target_sub  = nh.subscribe("/visual_track/has_target", 10, vtHasTargetCallback);
+    visual_ctrl_pub    = nh.advertise<visual_track::VisualTrack>("/visual_track/ctrl", 1, true);
+    visual_heading_pub = nh.advertise<std_msgs::Float32>("/visual_track/ref_heading", 1);
+    vision_enable_pub  = nh.advertise<std_msgs::Bool>("/yolo/enable", 1, true);
+
+    // 冷启动 1：广播 APF 初始真值（Param_PathTracking 已在上方加载）
+    {
+        usvc_planner::APFUpdate apf_init;
+        apf_init.repulsive_gain     = Param_PathTracking.REPULSIVE_GAIN;
+        apf_init.attractive_gain    = Param_PathTracking.ATTRACTIVE_GAIN;
+        apf_init.safe_distance      = Param_PathTracking.SAFE_DISTANCE;
+        apf_init.influence_distance = Param_PathTracking.OBSTACLE_INFLUENCE_DISTANCE;
+        apf_init.sigma              = Param_PathTracking.SIGMA;
+        apf_init.min_speed          = Param_PathTracking.MINSPEED;
+        apf_init.max_speed          = Param_PathTracking.MAXSPEED;
+        apf_update_pub.publish(apf_init);
+    }
+
+    // 冷启动 2：先赋显式安全初值，再从 config 读取 tunable 段并锁存广播
+    {
+        initDefaultTunableParams(g_tunable_params);
+        nh.param<double>("tunable/target_speed",        g_tunable_params.target_speed,        g_tunable_params.target_speed);
+        nh.param<double>("tunable/los_distance",        g_tunable_params.los_distance,        g_tunable_params.los_distance);
+        nh.param<double>("tunable/waypoint_tolerance",  g_tunable_params.waypoint_tolerance,  g_tunable_params.waypoint_tolerance);
+        nh.param<double>("tunable/min_speed_turn",      g_tunable_params.min_speed_turn,      g_tunable_params.min_speed_turn);
+        nh.param<double>("tunable/adaptive_los_scale",  g_tunable_params.adaptive_los_scale,  g_tunable_params.adaptive_los_scale);
+        nh.param<double>("tunable/safe_margin",         g_tunable_params.safe_margin,         g_tunable_params.safe_margin);
+        nh.param<double>("tunable/boom_x_max",          g_tunable_params.boom_x_max,          g_tunable_params.boom_x_max);
+        nh.param<double>("tunable/conf_thresh",         g_tunable_params.conf_thresh,         g_tunable_params.conf_thresh);
+        nh.param<double>("tunable/max_heading_offset",  g_tunable_params.max_heading_offset,  g_tunable_params.max_heading_offset);
+        nh.param<double>("tunable/approach_speed",      g_tunable_params.approach_speed,      g_tunable_params.approach_speed);
+        nh.param<double>("tunable/heading_alpha",       g_tunable_params.heading_alpha,       g_tunable_params.heading_alpha);
+        nh.param<double>("tunable/reached_area_thresh", g_tunable_params.reached_area_thresh, g_tunable_params.reached_area_thresh);
+        nh.param<double>("tunable/bottom_thresh",       g_tunable_params.bottom_thresh,       g_tunable_params.bottom_thresh);
+        nh.param<double>("tunable/slow_area",           g_tunable_params.slow_area,           g_tunable_params.slow_area);
+        tunable_update_pub.publish(g_tunable_params);
+    }
+
+    // 冷启动 3：广播初始停机/关闭状态，保证各子节点初始状态一致
+    {
+        usvc_planner::OtterCtrl oc_init;
+        oc_init.run_mode = 0; oc_init.task_state = 0; oc_init.boundary_select = 0;
+        edge_ctrl_pub.publish(oc_init);
+
+        visual_track::VisualTrack vm_init;
+        vm_init.run_mode = 0; vm_init.task_state = 0; vm_init.task_type = 0;
+        visual_ctrl_pub.publish(vm_init);
+
+        std_msgs::Bool yolo_init;
+        yolo_init.data = false;
+        vision_enable_pub.publish(yolo_init);
+    }
+
     sail_param_service = nh.advertiseService("sail/update_params", sailParamsCallback);
     back_param_service = nh.advertiseService("back/update_params", backParamsCallback);
     path_param_service = nh.advertiseService("path/update_params", pathParamsCallback);

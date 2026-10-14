@@ -30,7 +30,7 @@ heading_alpha: 0.3
 # 面积超过该归一化阈值即认为到位
 reached_area_thresh: 0.35
 # cy+h/2 超过该归一化值即认为进入收集盲区（贴近船头底边）
-bottom_thresh: 0.90
+bottom_thresh: 0.92
 
 # 减速区：面积到达该归一化值时开始线性减速（越大越近越慢）
 slow_area: 0.03

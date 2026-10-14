@@ -165,13 +165,13 @@ int main(int argc, char** argv)
     ROS_INFO("RTSP Server: port=%d, annotated=/%s",
              rtsp_port, annotated_path.c_str());
 
-    // ========== 3.话题发布==========
+    // 话题发布
     ros::Publisher detection_pub = nh.advertise<yolo_rtsp::DetectionArray>("/yolo/detections", 1);
 
     // 话题订阅
     ros::Subscriber enable_sub = nh.subscribe("/yolo/enable", 1, enableCallback);
 
-    // ========== 4. 启动YOLO推理进程（Python子进程）==========
+    // ==========  启动YOLO推理进程（Python子进程）==========
     // PythonBridge负责管理Python子进程的生命周期
     std::unique_ptr<PythonBridge> python_bridge;
     if (!script_dir.empty() && !model_path.empty())
@@ -319,11 +319,11 @@ int main(int argc, char** argv)
             }
             else
             {
-                // 连续失败30次(约3秒) = 会话真死了，进入重连流程
+                // 连续失败30次(约3秒)  进入重连流程
                 ROS_WARN("Camera stream dead (30 consecutive failures), reconnecting...");
                 cap.release();
 
-                // 重连带重试，最多10次、每次3秒（和第7节初始打开同一套逻辑）
+                // 重连带重试，最多10次、每次3秒
                 for (int attempt = 1; attempt <= MAX_CAM_RETRIES; attempt++)
                 {
                     cap.open(rtsp_url);

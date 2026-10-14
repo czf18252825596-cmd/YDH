@@ -218,9 +218,9 @@ static bool updateParamInFileInternal(const std::string& config_file,
         return false;
     }
     
-    // ========== 2. 同步到参数服务器 ==========
-    ros::param::set(param_name, param_value); // 参数服务器保持原始值（不带引号）
-    ROS_DEBUG("[ConfigManager] Synced %s to param server", param_name.c_str());
+    // // ========== 2. 同步到参数服务器 ==========
+    // ros::param::set(param_name, param_value); // 参数服务器保持原始值（不带引号）
+    // ROS_DEBUG("[ConfigManager] Synced %s to param server", param_name.c_str());
     
     return true;
 }
@@ -231,26 +231,33 @@ bool ConfigManagerTool::updateParamInFile(const std::string& config_file,
                                          const std::string& param_name,
                                          const std::string& param_value) {
     // 字符串类型需要特殊处理引号
-    return updateParamInFileInternal(config_file, param_name, param_value, true);
+    if (!updateParamInFileInternal(config_file, param_name, param_value, true)) return false;
+    ros::param::set(param_name, param_value);   //  string 类型
+    return true;
 }
 
 bool ConfigManagerTool::updateParamInFile(const std::string& config_file,
                                          const std::string& param_name,
                                          int param_value) {
-    return updateParamInFileInternal(config_file, param_name, std::to_string(param_value), false);
+    if (!updateParamInFileInternal(config_file, param_name, std::to_string(param_value), false)) return false;
+    ros::param::set(param_name, param_value);   //  int 类型
+    return true;
 }
 
 bool ConfigManagerTool::updateParamInFile(const std::string& config_file,
                                          const std::string& param_name,
                                          double param_value) {
-    return updateParamInFileInternal(config_file, param_name, std::to_string(param_value), false);
+    if (!updateParamInFileInternal(config_file, param_name, std::to_string(param_value), false)) return false;
+    ros::param::set(param_name, param_value);   // double 类型
+    return true;
 }
 
 bool ConfigManagerTool::updateParamInFile(const std::string& config_file,
                                          const std::string& param_name,
                                          bool param_value) {
-    return updateParamInFileInternal(config_file, param_name, 
-                                     param_value ? "true" : "false", false);
+    if (!updateParamInFileInternal(config_file, param_name, param_value ? "true" : "false", false)) return false;
+    ros::param::set(param_name, param_value);   // bool 类型
+    return true;
 }
 
 bool ConfigManagerTool::updateParamsInFile(const std::string& config_file,

@@ -40,13 +40,15 @@ public:
     PlannerNode(ros::NodeHandle& nh)
     {
         // ---------- 参数加载----------
-        // 非tunable参数：从 config 读取
-        los_distance_        = 5.0;
-        waypoint_tolerance_  = 2.5;
-        min_speed_turn_      = 0.4;
-        adaptive_los_scale_  = 1.5;
-        // tunable参数：硬编码默认值，等待 control_node 通过 /planner_node/tunable_update 话题更新
-        target_speed_     = 1.0;   // 等待tunable_update更新
+        // 先从本包 config.yaml 读取默认参数（单包仿真直接生效；联调时由 latched 话题覆盖）
+        nh.param<double>("/planner_node/target_speed",       target_speed_,       1.0);
+        nh.param<double>("/planner_node/los_distance",       los_distance_,       8.0);
+        nh.param<double>("/planner_node/waypoint_tolerance", waypoint_tolerance_, 2.5);
+        nh.param<double>("/planner_node/min_speed_turn",     min_speed_turn_,     0.4);
+        nh.param<double>("/planner_node/adaptive_los_scale", adaptive_los_scale_, 1.5);
+        nh.param<double>("/planner_node/safe_margin",        safe_margin_,        1.5);
+        nh.param<double>("/planner_node/boom_x_max",         boom_x_max_,         7.0);
+
         nh.param<bool>  ("/planner_node/lidar_spatial_mask",  lidar_spatial_mask_,  true);
         nh.param<bool>  ("/planner_node/debug_print",         debug_print_,         true);
         //nh.param<std::string>("/planner_node/lidar_topic",    lidar_topic_,         "/livox/lidar");//原始雷达
@@ -112,7 +114,7 @@ private:
     up::ApfAvoider   apf_;
 
     // ---------- 配置参数 ----------
-    double target_speed_ = 1.2, los_distance_ = 5.0, waypoint_tolerance_ = 2.5;
+    double target_speed_ = 1.0, los_distance_ = 8.0, waypoint_tolerance_ = 2.5;
     double min_speed_turn_ = 0.4; 
     double adaptive_los_scale_ = 1.5;
     double safe_margin_ = 1.5, boom_x_max_ = 7.0;   // 掩码可调参数（由上位机 tunable 覆盖 isMasked）

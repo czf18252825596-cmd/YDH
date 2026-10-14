@@ -41,8 +41,8 @@ private:
     double curveSpeed(double x, double y, double yaw) const; // 弯道降速
 
     std::vector<Eigen::Vector2d> pts_;
-    double target_speed_ = 1.2, los_ = 5.0, min_speed_turn_ = 0.6;
-    double waypoint_tol_ = 2.0, adaptive_los_scale_ = 1.5;
+    double target_speed_ = 1.0, los_ = 8.0, min_speed_turn_ = 0.4;
+    double waypoint_tol_ = 2.5, adaptive_los_scale_ = 1.5;
 
     int    waypoint_idx_ = 0;
     bool   arrived_      = false;
