@@ -26,7 +26,7 @@ bool Control::getNewTaskFile(const std::string& file_path)
 {
     try {
         std::cerr << "control.cpp 接收到新的任务文件完成" << std::endl;
-        std::vector<std::pair<int, std::map<int, std::vector<double>>>> task;
+        std::vector<CtlTask_t> task; //
 
         // 清空输出参数
         task.clear();
@@ -168,7 +168,11 @@ bool Control::getNewTaskFile(const std::string& file_path)
                 try { water_on_left = (std::stod(wl) != 0.0); } catch(...) {}
             }    
             // 将任务类型和对应的参数对添加到结果中
-            task.push_back({task_type, water_on_left, current_task_values}); 
+            CtlTask_t t;
+            t.task_type = task_type;
+            t.water_on_left = water_on_left;
+            t.task_val = current_task_values;
+            task.push_back(t); 
         }
         
         // // 打印最终解析结果

@@ -34,6 +34,7 @@
 #include <vector>
 
 namespace up = usvc_planner;
+static constexpr double EARTH_RADIUS = 6371393.0;
 
 class PlannerNode {
 public:
@@ -306,8 +307,8 @@ private:
             double dlat = p.x() - ship_lat;
             double dlon = p.y() - ship_lon;
             // 经纬度差 → ENU 局部坐标（米）
-            double east  = dlon * M_PI / 180.0 * up::EARTH_RADIUS * std::cos(ship_lat * M_PI / 180.0);
-            double north = dlat * M_PI / 180.0 * up::EARTH_RADIUS;
+            double east  = dlon * M_PI / 180.0 * EARTH_RADIUS * std::cos(ship_lat * M_PI / 180.0);
+            double north = dlat * M_PI / 180.0 * EARTH_RADIUS;
             // 转船体系：x 前, y 左（ENU yaw=0 朝东时, east=x, north=y）
             double cos_y = std::cos(ship_yaw), sin_y = std::sin(ship_yaw);
             double x_body =  cos_y * east + sin_y * north;  // 前向
